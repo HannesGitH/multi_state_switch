@@ -21,7 +21,8 @@ class MultiStateSwitch extends StatelessWidget {
     this.activeTrackColor,
     this.inactiveThumbColor,
     this.activeThumbColor,
-    this.stepWidth = 24,
+    this.inactiveTrackOutlineColor,
+    this.stepWidth = 20,
     this.animationDuration = const Duration(milliseconds: 150),
     this.semanticFormatterCallback,
     this.focusNode,
@@ -64,8 +65,17 @@ class MultiStateSwitch extends StatelessWidget {
   /// Defaults to [ColorScheme.onPrimary].
   final Color? activeThumbColor;
 
-  /// Distance between two neighbouring positions. The switch is
-  /// `32 + (states - 1) * stepWidth` wide.
+  /// Outline around the track in the "off" position, like a Material 3
+  /// [Switch] has. It fades out on the way to the first position.
+  ///
+  /// Defaults to [ColorScheme.outline].
+  final Color? inactiveTrackOutlineColor;
+
+  /// Distance between two neighbouring positions.
+  ///
+  /// The track is `32 + (states - 1) * stepWidth` wide, so the default makes
+  /// a 2-state switch the same 52px as a Material 3 [Switch]. The widget adds
+  /// 4px on each side and is 48px tall, for the same touch target.
   final double stepWidth;
 
   /// How long the track colour and thumb size take to follow a change.
@@ -87,6 +97,11 @@ class MultiStateSwitch extends StatelessWidget {
   // Space between the track's rounded end and the thumb's centre at the
   // outermost positions: the biggest thumb radius plus a 4px gap.
   static const double _inset = _maxThumbRadius + 4;
+  static const double _outlineWidth = 2;
+  // Extra space around the track that still reacts to touch, matching the
+  // 60x48 a Material 3 [Switch] takes up for its 52x32 track.
+  static const double _touchPadding = 4;
+  static const double _height = 48;
 
   @override
   Widget build(BuildContext context) {
@@ -95,10 +110,12 @@ class MultiStateSwitch extends StatelessWidget {
     final onTrack = activeTrackColor ?? cs.primary;
     final offThumb = inactiveThumbColor ?? cs.outline;
     final onThumb = activeThumbColor ?? cs.onPrimary;
+    final offOutline = inactiveTrackOutlineColor ?? cs.outline;
     final enabled = onChanged != null;
 
     return SizedBox(
-      width: 2 * _inset + (states - 1) * stepWidth,
+      width: 2 * (_inset + _touchPadding) + (states - 1) * stepWidth,
+      height: _height,
       child: Opacity(
         opacity: enabled ? 1 : 0.38,
         child: TweenAnimationBuilder<double>(
@@ -108,14 +125,19 @@ class MultiStateSwitch extends StatelessWidget {
           builder: (context, t, child) {
             final track = Color.lerp(offTrack, onTrack, t)!;
             final radius = lerpDouble(_minThumbRadius, _maxThumbRadius, t)!;
-            // The thumb only blends between "off" and the first position and
-            // keeps the "on" colour beyond that, see [activeThumbColor].
-            final thumb = Color.lerp(
-                offThumb, onThumb, (t * (states - 1)).clamp(0.0, 1.0))!;
+            // The thumb and outline only blend between "off" and the first
+            // position and stay put beyond that, see [activeThumbColor].
+            final firstStep = (t * (states - 1)).clamp(0.0, 1.0);
+            final thumb = Color.lerp(offThumb, onThumb, firstStep)!;
+            final outline = Color.lerp(offOutline, track, firstStep)!;
             return SliderTheme(
               data: SliderThemeData(
                 trackHeight: _trackHeight,
-                trackShape: const _PillTrackShape(_inset),
+                trackShape: _PillTrackShape(
+                  inset: _inset,
+                  outlineColor: outline,
+                  outlineWidth: _outlineWidth,
+                ),
                 activeTrackColor: track,
                 inactiveTrackColor: track,
                 disabledActiveTrackColor: track,
@@ -130,9 +152,9 @@ class MultiStateSwitch extends StatelessWidget {
                 ),
                 // The overlay radius sets how far the track is inset from the
                 // widget edges; _PillTrackShape paints back out into that
-                // space.
-                overlayShape:
-                    const RoundSliderOverlayShape(overlayRadius: _inset),
+                // space, minus the touch padding.
+                overlayShape: const RoundSliderOverlayShape(
+                    overlayRadius: _inset + _touchPadding),
                 overlayColor: Colors.transparent,
                 tickMarkShape: SliderTickMarkShape.noTickMark,
                 showValueIndicator: ShowValueIndicator.never,
@@ -165,9 +187,15 @@ class MultiStateSwitch extends StatelessWidget {
 /// track rect, so the thumb sits inside the pill at the outermost positions
 /// instead of overhanging it.
 class _PillTrackShape extends SliderTrackShape with BaseSliderTrackShape {
-  const _PillTrackShape(this.inset);
+  const _PillTrackShape({
+    required this.inset,
+    required this.outlineColor,
+    required this.outlineWidth,
+  });
 
   final double inset;
+  final Color outlineColor;
+  final double outlineWidth;
 
   @override
   void paint(
@@ -191,9 +219,20 @@ class _PillTrackShape extends SliderTrackShape with BaseSliderTrackShape {
     );
     final pill = Rect.fromLTRB(
         rect.left - inset, rect.top, rect.right + inset, rect.bottom);
+    final rrect =
+        RRect.fromRectAndRadius(pill, Radius.circular(pill.height / 2));
+    final track = sliderTheme.activeTrackColor!;
+    context.canvas.drawRRect(rrect, Paint()..color = track);
+    // Once the outline has faded into the track, drawing it would only
+    // soften the pill's anti-aliased edge.
+    if (outlineColor == track) return;
+    // Stroke inside the pill so the outline doesn't grow the switch.
     context.canvas.drawRRect(
-      RRect.fromRectAndRadius(pill, Radius.circular(pill.height / 2)),
-      Paint()..color = sliderTheme.activeTrackColor!,
+      rrect.deflate(outlineWidth / 2),
+      Paint()
+        ..color = outlineColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = outlineWidth,
     );
   }
 }

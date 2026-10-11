@@ -6,7 +6,7 @@ A Material 3 switch with any number of states: off / on, off / middle / on, or a
 
 ## Features
 
-- Looks like a Material 3 `Switch`, but with 2, 3, 5, … fixed positions
+- With 2 states it looks exactly like a Material 3 `Switch` (same size, colours and outline); add more states as needed
 - Built on a discrete `Slider`: dragging, snapping, tap-to-jump, keyboard input and screen reader support come for free
 - Track colour and thumb size animate from "off" to "on" as the position goes up
 - Picks up your `ColorScheme`, or takes custom track and thumb colours
@@ -22,7 +22,7 @@ or add it to your `pubspec.yaml` manually:
 
 ```yaml
 dependencies:
-  multi_state_switch: ^1.0.0
+  multi_state_switch: ^1.1.0
 ```
 
 ## Usage
@@ -54,7 +54,8 @@ MultiStateSwitch(
 | `activeTrackColor` | `colorScheme.primary` | track colour when on; positions in between blend |
 | `inactiveThumbColor` | `colorScheme.outline` | thumb colour when off |
 | `activeThumbColor` | `colorScheme.onPrimary` | thumb colour in every other position |
-| `stepWidth` | `24` | distance between two positions; the switch is `32 + (states - 1) * stepWidth` wide |
+| `inactiveTrackOutlineColor` | `colorScheme.outline` | outline around the track when off |
+| `stepWidth` | `20` | distance between two positions; the track is `32 + (states - 1) * stepWidth` wide, plus 4px touch padding per side, 48px tall |
 | `animationDuration` | `150ms` | how fast colour and thumb size follow a change |
 | `semanticFormatterCallback` | position number | what screen readers announce for a position |
 | `focusNode`, `autofocus` | | as on `Slider` |

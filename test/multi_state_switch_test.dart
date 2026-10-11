@@ -38,13 +38,14 @@ void main() {
     expect(changes, [2, 1, 0]);
   });
 
-  testWidgets('width grows with the number of states', (tester) async {
+  testWidgets('size grows with the number of states', (tester) async {
     await tester.pumpWidget(_host(states: 2, onChanged: (_) {}));
-    final two = tester.getSize(find.byType(MultiStateSwitch)).width;
+    final two = tester.getSize(find.byType(MultiStateSwitch));
     await tester.pumpWidget(_host(states: 5, onChanged: (_) {}));
-    final five = tester.getSize(find.byType(MultiStateSwitch)).width;
-    expect(two, 56);
-    expect(five, 128);
+    final five = tester.getSize(find.byType(MultiStateSwitch));
+    // Same footprint as a Material 3 Switch.
+    expect(two, const Size(60, 48));
+    expect(five, const Size(120, 48));
   });
 
   testWidgets('disabled switch ignores taps', (tester) async {
